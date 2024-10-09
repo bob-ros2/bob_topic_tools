@@ -6,7 +6,6 @@ find_package(std_msgs REQUIRED)
 
 install(PROGRAMS
   ${PROJECT_NAME}/filter
-  ${PROJECT_NAME}/delay
   ${PROJECT_NAME}/terminal
   DESTINATION lib/${PROJECT_NAME}
 )
