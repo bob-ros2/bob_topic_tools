@@ -27,7 +27,7 @@ from std_msgs.msg import String
 from rcl_interfaces.msg import ParameterDescriptor
 
 class RosNode(Node):
-    """Basic ROS Node"""
+    """Basic String topic IO terminal ROS Node"""
     def __init__(self):
         super().__init__('terminal')
 
@@ -58,7 +58,7 @@ class RosNode(Node):
             ParameterDescriptor(
             description='Stylesheet qss of PlainText area.'))
         self.declare_parameter('stylesheet_window', 
-            "background-color: black; color white;", 
+            "background-color: gray; color white;", 
             ParameterDescriptor(
             description='Stylesheet qss of Window area.'))
         self.declare_parameter('line_count', 0, 
@@ -167,12 +167,15 @@ class Window(QWidget):
         if self.node.line_count > 0:
             self.tarea.setMaximumBlockCount(self.node.line_count)
 
-        # create input text field
+        # create input text field with history functionality from QComboBox
         self.text = ''
-        self.tedit = QLineEdit()
-        self.tedit.setStyleSheet("QLineEdit { %s }" % self.node.stylesheet)
-        self.tedit.textChanged.connect(self.input_changed)
-        self.tedit.editingFinished.connect(self.input_enter)
+        self.tedit = QComboBox()
+        self.tedit.setEditable(True)
+        self.tedit.setStyleSheet(self.node.stylesheet)
+        self.tedit.editTextChanged.connect(self.input_changed)
+        self.tedit.lineEdit().setMaxLength(512000) 
+        self.tedit.lineEdit().setStyleSheet(self.node.stylesheet)
+        self.tedit.lineEdit().returnPressed.connect(self.input_enter)
 
         # put together layout
         layout = QGridLayout()
@@ -231,7 +234,7 @@ class Window(QWidget):
         """Input edit enter callback."""
         if self.text:
             self.node.publish(self.text)
-        self.tedit.setText('')
+        self.tedit.lineEdit().setText('')
         self.text = ''
 
     def closeEvent(self, event):

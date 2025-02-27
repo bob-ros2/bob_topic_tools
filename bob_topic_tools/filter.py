@@ -23,7 +23,7 @@ from rcl_interfaces.msg import ParameterDescriptor
 from std_msgs.msg import String
 
 class FilterNode(Node):
-    """Basic String topic filter node."""
+    """String topic filter node."""
 
     def __init__(self):
         super().__init__('filter')
@@ -59,11 +59,11 @@ class FilterNode(Node):
             self.black_filter = self.load_yaml(self.black_list)
 
         self.sub = self.create_subscription(
-            String, 'chat', self.chat_input_callback, 10)
+            String, 'chat', self.chat_input_callback, 1000)
         self.pub = self.create_publisher(
-            String, 'chat_filtered', 10)
+            String, 'chat_filtered', 1000)
         self.pub_rejected = self.create_publisher(
-            String, 'rejected', 10)
+            String, 'rejected', 1000)
 
         self.add_on_set_parameters_callback(self.parameter_callback)
 
