@@ -1,5 +1,5 @@
-# ROS Package Bob Topic Tools
-This ROS package is part of Bob's NLP and LLM tools
+# ROS Package [bob_topic_tools](https://github.com/bob-ros2/bob_topic_tools)
+This ROS Package is part of Bob's NLP and LLM tools.
 
 The contained ROS Nodes are a collection of std_msgs/String topic tools. It extends the already existing [`ROS package topic_tools`](https://github.com/ros-tooling/topic_tools) but more dedicated to NLP tasks.
 
@@ -98,6 +98,12 @@ Publish aggregated output.
 
 ## ROS Node Terminal
 Basic String topic IO terminal ROS Node.
+
+### Dependencies
+The required QT5 libraries should already exist if ROS is installed. If missing use below installation to get them.
+```bash
+sudo apt-get install python3-pyqt5
+```
 
 ### Usage
 ```bash
