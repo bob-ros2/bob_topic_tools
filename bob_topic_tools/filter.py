@@ -27,31 +27,41 @@ class FilterNode(Node):
 
     def __init__(self):
         super().__init__('filter')
+        self.declare_parameters(
+            namespace='',
+            parameters=[
 
-        self.declare_parameter('white_filter', [''],
+            ('white_filter', [''],
             ParameterDescriptor(description=
-            'String array with white list rules.'))
-        self.declare_parameter('black_filter',[''],
+            'String array with white list rules.')),
+
+            ('black_filter',[''],
             ParameterDescriptor(description=
-            'String array with blacklist rules.'))
-        self.declare_parameter('white_list', "", 
+            'String array with blacklist rules.')),
+
+            ('white_list', "", 
             ParameterDescriptor(description=
             "White list file. This overides parameter white_filter.\n"
-            "Format: Yaml file with a list of string containing regex rules."))
-        self.declare_parameter('black_list', "", 
+            "Format: Yaml file with a list of string containing regex rules.")),
+
+            ('black_list', "", 
             ParameterDescriptor(description=
             "Black list file. This overides parameter black_filter.\n"
-            "Format: Yaml file with a list of strings containing regex rules."))
-        self.declare_parameter('substitute', [''], 
+            "Format: Yaml file with a list of strings containing regex rules.")),
+
+            ('substitute', [''], 
             ParameterDescriptor(description=
-            "Substitute regex for the strimg message similar to python re.sub\n"
-            "Expects an array with two entries: ['pattern','replace']"))
+            "Applies substitutions to the string message similar to python re.sub\n"
+            "Expects an array with pairs: ['pattern','replace', ...]"))
+        ])
 
         self.white_filter = self.get_parameter('white_filter',).value
         self.black_filter = self.get_parameter('black_filter').value
         self.white_list   = self.get_parameter('white_list').value
         self.black_list   = self.get_parameter('black_list').value
         self.substitute   = self.get_parameter('substitute').value
+        
+        assert len(self.substitute) in [0,1] or len(self.substitute) % 2 == 0
  
         if self.white_list:
             self.white_filter = self.load_yaml(self.white_list)
@@ -68,14 +78,16 @@ class FilterNode(Node):
         self.add_on_set_parameters_callback(self.parameter_callback)
 
     def transform(self, s):
-        """Substitutes a strimg similar to python re.sub."""
-        if len(self.substitute) == 2:
-            return re.sub(self.substitute[0], self.substitute[1], s)
+        """Substitutes a string similar to python re.sub."""
+        if len(self.substitute) >= 2 and len(self.substitute) % 2 == 0:
+            for a, b in zip(self.substitute[::2], self.substitute[1::2]):
+                s = re.sub(a, b, s)
         return s
 
     def chat_input_callback(self, msg : String):
-        """Will be called for every incoming message.
-        It depends from black and white list if the message will be filtered."""
+        """Will be called for every incoming message. 
+        It depends from black and white list if the message will be filtered. 
+        Finally also substitutions are applied if configured."""
         is_white = False
         for f in self.white_filter:
             if f and re.search(f, msg.data):
@@ -92,6 +104,7 @@ class FilterNode(Node):
             msg.data = self.transform(msg.data)
             self.pub.publish(msg)
             return
+        msg.data = self.transform(msg.data)
         self.pub_rejected.publish(msg)
 
     def load_yaml(self, filename):
@@ -105,7 +118,7 @@ class FilterNode(Node):
             self.get_logger().error("Loading %s: %s" % (filename, str(e)))
             return []
 
-    def parameter_callback(self, params : []):
+    def parameter_callback(self, params):
         """Parameter callback used by Dynamic Reconfigure."""
         for param in params:
             if   param.name == "white_filter": self.white_filter = param.value
