@@ -33,15 +33,15 @@ String topic filter ROS node. It supports also dynamic parameter reconfigure dur
 
 ### Subscribed Topics
 
-> ~chat (std_msgs/String)\
+> ~topic_in (std_msgs/String)\
 Read input data from topic.
 
 ### Published Topics
 
-> ~chat_filtered (std_msgs/String)\
+> ~topic_out (std_msgs/String)\
 Publish filtered output.
 
-> ~chat_rejected (std_msgs/String)\
+> ~topic_rejected (std_msgs/String)\
 Publish rejected output.
 
 ## ROS Node Stream Filter
