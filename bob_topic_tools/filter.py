@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 import yaml
 import re
 import rclpy
@@ -23,8 +24,9 @@ from rcl_interfaces.msg import ParameterDescriptor
 from std_msgs.msg import String
 
 class FilterNode(Node):
-    """String topic filter node."""
-
+    """String topic filter node. Can filter based on black/white list file "
+    with the additional option to apply a list of subsitutions to the output.
+    """
     def __init__(self):
         super().__init__('filter')
         self.declare_parameters(
@@ -60,7 +62,7 @@ class FilterNode(Node):
         self.white_list   = self.get_parameter('white_list').value
         self.black_list   = self.get_parameter('black_list').value
         self.substitute   = self.get_parameter('substitute').value
-        
+
         assert len(self.substitute) in [0,1] or len(self.substitute) % 2 == 0
  
         if self.white_list:
@@ -69,11 +71,11 @@ class FilterNode(Node):
             self.black_filter = self.load_yaml(self.black_list)
 
         self.sub = self.create_subscription(
-            String, 'chat', self.chat_input_callback, 1000)
+            String, 'topic_in', self.chat_input_callback, 1000)
         self.pub = self.create_publisher(
-            String, 'chat_filtered', 1000)
+            String, 'topic_out', 1000)
         self.pub_rejected = self.create_publisher(
-            String, 'rejected', 1000)
+            String, 'topic_rejected', 1000)
 
         self.add_on_set_parameters_callback(self.parameter_callback)
 
@@ -104,7 +106,6 @@ class FilterNode(Node):
             msg.data = self.transform(msg.data)
             self.pub.publish(msg)
             return
-        msg.data = self.transform(msg.data)
         self.pub_rejected.publish(msg)
 
     def load_yaml(self, filename):
