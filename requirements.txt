@@ -1,0 +1,5 @@
+numpy<2
+opencv-python-headless
+PyYAML>=5.0
+PyQt5>=5.15
+QScintilla>=2.13

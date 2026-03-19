@@ -1,4 +1,7 @@
 # ROS Package [bob_topic_tools](https://github.com/bob-ros2/bob_topic_tools)
+[![ROS 2 CI](https://github.com/bob-ros2/bob_topic_tools/actions/workflows/ros2_ci.yml/badge.svg)](https://github.com/bob-ros2/bob_topic_tools/actions/workflows/ros2_ci.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 This ROS Package is part of Bob's NLP and LLM tools.
 
 The contained ROS Nodes are a collection of std_msgs/String topic tools. It extends the already existing [`ROS package topic_tools`](https://github.com/ros-tooling/topic_tools) but more dedicated to NLP tasks.
@@ -6,103 +9,69 @@ The contained ROS Nodes are a collection of std_msgs/String topic tools. It exte
 ## ROS Node Filter
 String topic filter ROS node. It supports also dynamic parameter reconfigure during runtime.
 
-### Parameter
+### Parameters
 
-> **Parameter name**: white_filter\
-> **Type**: string array\
-> **Description**: String array with white list rules.
+| Name | Type | Description |
+|---|---|---|
+| `white_filter` | string array | String array with white list rules. Can also be set via environment variable `FILTER_WHITE_FILTER`. |
+| `black_filter` | string array | String array with blacklist rules. Can also be set via environment variable `FILTER_BLACK_FILTER`. |
+| `white_list` | string | White list file. This overrides parameter `white_filter`. Format: Yaml file with a list of strings containing regex rules. Can also be set via environment variable `FILTER_WHITE_LIST`. |
+| `black_list` | string | Black list file. This overrides parameter `black_filter`. Format: Yaml file with a list of strings containing regex rules. Can also be set via environment variable `FILTER_BLACK_LIST`. |
+| `substitute` | string array | Applies substitutions to the string message similar to python `re.sub`. Expects an array with pairs: `['pattern1','replace1', 'pattern2','replace2', ...]`. Can also be set via environment variable `FILTER_SUBSTITUTE`. |
 
-> **Parameter name**: black_filter\
-> **Type**: string array\
-> **Description**: String array with blacklist rules.
+### Topics
 
-> **Parameter name**: white_list\
-> **Type**: string\
-> **Description**: White list file. This overides parameter white_filter.\
-> **Format**: Yaml file with a list of string containing regex rules.
-
-> **Parameter name**: black_list\
-> **Type**: string\
-> **Description**: Black list file. This overides parameter black_filter.\
-> **Format**: Yaml file with a list of strings containing regex rules.
-
-> **Parameter name**: substitute\
-> **Type**: string array\
-> **Description**: Substitute regex for the string message similar to python re.sub\
-> **Expects an array with two entries**: ['pattern','replace']
-
-### Subscribed Topics
-
-> ~topic_in (std_msgs/String)\
-Read input data from topic.
-
-### Published Topics
-
-> ~topic_out (std_msgs/String)\
-Publish filtered output.
-
-> ~topic_rejected (std_msgs/String)\
-Publish rejected output.
+| Name | Type | Description |
+|---|---|---|
+| `~topic_in` | `std_msgs/String` | Read input data from topic. |
+| `~topic_out` | `std_msgs/String` | Publish filtered output. |
+| `~topic_rejected` | `std_msgs/String` | Publish rejected output. |
 
 ## ROS Node Stream Filter
 String Stream topic filter node. Can redirect text portion enclosured in start/end tags.
 
-### Parameter
-> **Parameter name**: buffer_size\
-> **Type**: integer\
-> **Description**: Input buffer size, default: 65565
+### Parameters
 
-> **Parameter name**: end_tag\
-> **Type**: string\
-> **Description**: End tag of the area to filter out, default '</think>'
+| Name | Type | Description |
+|---|---|---|
+| `buffer_size` | integer | Input buffer size, default: 65535. Can also be set via environment variable `STREAM_FILTER_BUFFER_SIZE`. |
+| `end_tag` | string | End tag of the area to filter out, default `</think>`. Can also be set via environment variable `STREAM_FILTER_END_TAG`. |
+| `start_tag` | string | Start tag of the area to sort out, default `<think>`. Can also be set via environment variable `STREAM_FILTER_START_TAG`. |
+| `window_size` | integer | Rolling window size to detect the tags. This should be > then max tag length, default: 32. Can also be set via environment variable `STREAM_FILTER_WINDOW_SIZE`. |
 
-> **Parameter name**: start_tag\
-> **Type**: string\
-> **Description**: Start tag of the area to sort out, default '<think>'
+### Topics
 
-> **Parameter name**: window_size\
-> **Type**: integer\
-> **Description**: Rolling window size to detect the tags. This should be > then max tag length, default: 64
-
-### Subscribed Topics
-
-> ~stream_in (std_msgs/String)\
-Read input string stream from topic
-
-### Published Topics
-
-> ~stream_out (std_msgs/String)\
-Publish data outside of the enclosing tags.
-
-> ~stream_filtered (std_msgs/String)\
-Publish data within the enclosing tags.
-
+| Name | Type | Description |
+|---|---|---|
+| `~stream_in` | `std_msgs/String` | Read input string stream from topic. |
+| `~stream_out` | `std_msgs/String` | Publish data outside of the enclosing tags. |
+| `~stream_filtered` | `std_msgs/String` | Publish data within the enclosing tags. |
 
 ## ROS Node Aggregator
 String Stream aggregator node.
 
-### Parameter
-> **Parameter name**: delimeters\
-> **Type**: string\
-> **Description**: Delimeter character list where to stop aggregating the input and publish the aggregated data to the ouput topic. This parameter can also be set via environment variable AGGREGATOR_DELIMETERS, default '.:,;!?-*\n\t'
+### Parameters
 
-### Subscribed Topics
+| Name | Type | Description |
+|---|---|---|
+| `delimiters` | string | Delimiter character list where to stop aggregating the input and publish. These strings are transformed into their real equivalents: `\n` and `\t`. Default `.:,;!?\n`. Can also be set via environment variable `AGGREGATOR_DELIMITERS`. |
+| `auto_flush` | integer | Auto-flush timer in milliseconds. If the last token is not a delimiter, the aggregated text is published after this timeout. Set to 0 to disable. Default 1500ms. Can also be set via environment variable `AGGREGATOR_AUTO_FLUSH`. |
 
-> ~stream_in (std_msgs/String)\
-Read input string stream from topic.
+### Topics
 
-### Published Topics
-
-> ~stream_out (std_msgs/String)\
-Publish aggregated output.
+| Name | Type | Description |
+|---|---|---|
+| `~stream_in` | `std_msgs/String` | Read input string stream from topic. |
+| `~stream_out` | `std_msgs/String` | Publish aggregated output. |
 
 ## ROS Node Terminal
-Basic String topic IO terminal ROS Node.
+Basic String topic IO terminal ROS Node with syntax highlighting.
 
 ### Dependencies
 The required QT5 libraries should already exist if ROS is installed. If missing use below installation to get them.
 ```bash
-sudo apt-get install python3-pyqt5
+sudo apt install python3-pyqt5
+sudo apt install python3-pyqt5.qsci
 ```
 
 ### Usage
@@ -111,68 +80,52 @@ sudo apt-get install python3-pyqt5
 ros2 run bob_topic_tools terminal --ros-args -p frameless:=true -p geometry:=[300,300,600,480]
 
 # show window on another display
-# the node can also read from stdin source
 # display what will be received from socket
 netcat -U /tmp/some.sock | ros2 run bob_topic_tools terminal --ros-args -p display:=1 -p geometry:=[300,300,600,480]
 ```
 
-### Parameter
+### Parameters
 
-> **Parameter name**: display\
-> **Type**: integer\
-> **Description**: Display where to show window.
+| Name | Type | Description |
+|---|---|---|
+| `display` | integer | Display where to show window. Can also be set via environment variable `TERMINAL_DISPLAY`. |
+| `fontname` | string | Window fontname. Can also be set via environment variable `TERMINAL_FONTNAME`. |
+| `fontsize` | integer | Window fontsize. Can also be set via environment variable `TERMINAL_FONTSIZE`. |
+| `frameless` | boolean | Switch off window caption. Can also be set via environment variable `TERMINAL_FRAMELESS`. |
+| `geometry` | integer array | Window geometry. `[x, y, width, height]`. Can also be set via environment variable `TERMINAL_GEOMETRY`. |
+| `input` | boolean | Enables or disables the text input field. Can also be set via environment variable `TERMINAL_INPUT`. |
+| `line_count` | integer | Maximum line count in the text area. 0 = unlimited. If exceeded, lines are removed from the top. Can also be set via environment variable `TERMINAL_LINE_COUNT`. |
+| `margin` | integer array | Window inner margin. `[left, top, right, bottom]`. Can also be set via environment variable `TERMINAL_MARGIN`. |
+| `opacity` | double | Window opacity. Can also be set via environment variable `TERMINAL_OPACITY`. |
+| `stylesheet` | string | Stylesheet qss of PlainText area. Can also be set via environment variable `TERMINAL_STYLESHEET`. |
+| `stylesheet_window` | string | Stylesheet qss of Window area. Can also be set via environment variable `TERMINAL_STYLESHEET_WINDOW`. |
+| `title` | string | Title of window. Can also be set via environment variable `TERMINAL_TITLE`. |
+| `lexer` | string | The lexer to be used: `QsciLexerMarkdown`, `QsciLexerJSON`, `QsciLexerPython`. Default: `QsciLexerMarkdown`. Can also be set via environment variable `TERMINAL_LEXER`. |
+| `image_view` | boolean | Start with image view option. Default: `false`. Can also be set via environment variable `TERMINAL_IMAGE_VIEW`. |
+| `color_paper` | string | Background color (named or HEX). Default: `black`. Can also be set via environment variable `TERMINAL_COLOR_PAPER`. |
+| `color_text` | string | Text color (named or HEX). Default: `lightgray`. Can also be set via environment variable `TERMINAL_COLOR_TEXT`. |
 
-> **Parameter name**: fontname\
-> **Type**: string\
-> **Description**: Window fontname.
+### Topics
 
-> **Parameter name**: fontsize\
-> **Type**: integer\
-> **Description**: Window fontsize.
+| Name | Type | Description |
+|---|---|---|
+| `~topic_in` | `std_msgs/String` | Read input data from topic. |
+| `~topic_in_cr` | `std_msgs/String` | Read input data and append newline. |
+| `~topic_out` | `std_msgs/String` | Publish text entered in terminal. |
+| `~image` | `sensor_msgs/Image` | Optional image subscription. |
 
-> **Parameter name**: frameless\
-> **Type**: boolean\
-> **Description**: Switch off window caption.
+## ROS Node Valve
+String topic forwarding node with valve behavior. Controls the flow of messages to the output topic at a specified frequency.
 
-> **Parameter name**: geometry\
-> **Type**: integer array\
-> **Description**: Window geometry. [x, y, with, height]
+### Parameters
 
-> **Parameter name**: input\
-> **Type**: boolean\
-> **Description**: Enables or disables the text input field.
+| Name | Type | Description |
+|---|---|---|
+| `frequency` | double | Frequency in seconds to forward incoming messages to output topic. Default `1.0`. Can also be set via environment variable `VALVE_FREQUENCY`. |
 
-> **Parameter name**: line_count\
-> **Type**: integer\
-> **Description**: Maximum line count in the text area. 0 = unlimited\
-> If the number exceeds the lines are removed from the top.
+### Topics
 
-> **Parameter name**: margin\
-> **Type**: integer array\
-> **Description**: Window inner margin. [left, top, right, bottom]
-
-> **Parameter name**: opacity\
-> **Type**: double\
-> **Description**: Window opacity.
-
-> **Parameter name**: stylesheet\
-> **Type**: string\
-> **Description**: Stylesheet qss of PlainText area.
-
-> **Parameter name**: stylesheet_window\
-> **Type**: string\
-> **Description**: Stylesheet qss of Window area.
-
-> **Parameter name**: title\
-> **Type**: string\
-> **Description**: Title of window.
-
-### Subscribed Topics
-
-> ~topic_in (std_msgs/String)\
-Read input data from topic in addition to be able to read data from stdin.
-
-### Published Topics
-
-> ~topic_out (std_msgs/String)\
-Publish to output.
+| Name | Type | Description |
+|---|---|---|
+| `~valve_in` | `std_msgs/String` | Input stream topic. |
+| `~valve_out` | `std_msgs/String` | Buffered output stream topic. |
