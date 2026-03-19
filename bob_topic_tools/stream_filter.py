@@ -84,68 +84,52 @@ class StringStreamBuffer:
 
 
 class StreamProcessor:
-    """Process a stream of characters to split based on tags."""
+    """Process a stream of text to split based on tags using efficient find()."""
 
     def __init__(self, start_tag, end_tag, window_size=32, buffer_size=0xFFFF):
-        self.ring_buffer = [' '] * window_size
-        self.window_size = window_size
-        self.buffer_index = 0
+        """Initialize the processor. window_size is kept for compatibility."""
         self.start_tag = start_tag
         self.end_tag = end_tag
-        self.start_tag_found = False
-        self.end_tag_found = False
-        self.current_channel = 'A'
-        self.buffer_content = ''
-        self.stream_A = StringStreamBuffer(buffer_size)
-        self.stream_B = StringStreamBuffer(buffer_size)
+        self.in_filtered_area = False
+        self.stream_A = StringStreamBuffer(buffer_size)  # Outside tags
+        self.stream_B = StringStreamBuffer(buffer_size)  # Inside tags
+        self.carry_over = ''
 
-    def process_char(self, char):
-        """Add character to the ring buffer and process it."""
-        self.ring_buffer[self.buffer_index] = char
-        self.buffer_index = (self.buffer_index + 1) % self.window_size
+    def process_string(self, text):
+        """Process a string using block search instead of character loops."""
+        combined = self.carry_over + text
+        self.carry_over = ''
 
-        # Append character to the buffer content
-        self.buffer_content += char
-
-        # Ensure buffer content does not exceed window size
-        if len(self.buffer_content) > self.window_size:
-            self.buffer_content = self.buffer_content[-self.window_size:]
-
-        # Check if start_tag is found in the buffer content
-        if not self.start_tag_found and self.start_tag in self.buffer_content:
-            self.start_tag_found = True
-            self.current_channel = 'B'
-            # Clear the buffer content after forwarding to channel B
-            self.buffer_content = ''
-            self.forward_to_channel_A(char)
-        # Check if end_tag is found in the buffer content
-        elif self.start_tag_found and self.end_tag in self.buffer_content:
-            self.end_tag_found = True
-            self.start_tag_found = False
-            self.current_channel = 'A'
-            # Clear the buffer content after forwarding to channel A
-            self.buffer_content = ''
-            self.forward_to_channel_B(char)
-        # Forward character to the appropriate channel
-        elif self.current_channel == 'A':
-            self.forward_to_channel_A(char)
-        else:
-            self.forward_to_channel_B(char)
-
-    def process_string(self, string):
-        """Process a string of characters."""
-        for char in string:
-            self.process_char(char)
-
-    def forward_to_channel_A(self, string):
-        """Forward string to channel A."""
-        logging.debug(f'Channel A: {string}')
-        self.stream_A.append_text(string)
-
-    def forward_to_channel_B(self, string):
-        """Forward string to channel B."""
-        logging.debug(f'Channel B: {string}')
-        self.stream_B.append_text(string)
+        while combined:
+            if not self.in_filtered_area:
+                # Looking for start_tag
+                idx = combined.find(self.start_tag)
+                if idx != -1:
+                    # Found start_tag: everything before belongs to A
+                    self.stream_A.append_text(combined[:idx])
+                    self.in_filtered_area = True
+                    combined = combined[idx + len(self.start_tag):]
+                else:
+                    # Not found, but partial tag might be at the end
+                    # We keep (len(start_tag) - 1) chars as carry_over
+                    safe_len = max(0, len(combined) - len(self.start_tag) + 1)
+                    self.stream_A.append_text(combined[:safe_len])
+                    self.carry_over = combined[safe_len:]
+                    break
+            else:
+                # Looking for end_tag
+                idx = combined.find(self.end_tag)
+                if idx != -1:
+                    # Found end_tag: everything before belongs to B
+                    self.stream_B.append_text(combined[:idx])
+                    self.in_filtered_area = False
+                    combined = combined[idx + len(self.end_tag):]
+                else:
+                    # Not found, keep (len(end_tag) - 1) chars
+                    safe_len = max(0, len(combined) - len(self.end_tag) + 1)
+                    self.stream_B.append_text(combined[:safe_len])
+                    self.carry_over = combined[safe_len:]
+                    break
 
 
 class StreamFilterNode(Node):
@@ -202,11 +186,6 @@ class StreamFilterNode(Node):
         """Handle incoming message callback."""
         logging.debug(f'got: {msg.data}')
         self.token_handler.process_string(msg.data)
-
-        self.token_handler.stream_A.remove_keywords(
-            [self.token_handler.start_tag, self.token_handler.end_tag])
-        self.token_handler.stream_B.remove_keywords(
-            [self.token_handler.start_tag, self.token_handler.end_tag])
 
         text = self.token_handler.stream_A.pop()
         if text:

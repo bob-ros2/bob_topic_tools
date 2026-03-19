@@ -27,19 +27,14 @@ import yaml
 
 
 class FilterNode(Node):
-    """
-    String topic filter node.
-
-    Can filter based on black/white list file
-    with the additional option to apply a list of substitutions to the output.
-    """
+    """String topic filter ROS node with pre-compiled regex performance."""
 
     def __init__(self):
         super().__init__('filter')
+
         self.declare_parameters(
             namespace='',
             parameters=[
-
                 ('white_filter',
                  os.getenv('FILTER_WHITE_FILTER', '').split(',')
                  if os.getenv('FILTER_WHITE_FILTER') else [''],
@@ -57,124 +52,161 @@ class FilterNode(Node):
                 ('white_list',
                  os.getenv('FILTER_WHITE_LIST', ''),
                  ParameterDescriptor(description=(
-                     'White list file. This overrides parameter white_filter.\n'
-                     'Format: Yaml file with a list of strings containing regex rules. '
+                     'White list file. This overrides parameter white_filter. '
+                     'Format: Yaml file with list of strings. '
                      'Can also be set via environment variable FILTER_WHITE_LIST.'))),
 
                 ('black_list',
                  os.getenv('FILTER_BLACK_LIST', ''),
                  ParameterDescriptor(description=(
-                     'Black list file. This overrides parameter black_filter.\n'
-                     'Format: Yaml file with a list of strings containing regex rules. '
+                     'Black list file. This overrides parameter black_filter. '
+                     'Format: Yaml file with list of strings. '
                      'Can also be set via environment variable FILTER_BLACK_LIST.'))),
 
                 ('substitute',
                  os.getenv('FILTER_SUBSTITUTE', '').split(',')
                  if os.getenv('FILTER_SUBSTITUTE') else [''],
                  ParameterDescriptor(description=(
-                     'Applies substitutions to the string message similar to python re.sub\n'
-                     "Expects an array with pairs: ['pattern1','replace1', ...]. "
+                     'Applies substitutions. Array with pairs: [pattern1, replace1, ...]. '
                      'Can also be set via environment variable FILTER_SUBSTITUTE.')))
             ])
 
-        self.white_filter = self.get_parameter('white_filter',).value
+        # Current parameter states
+        self.white_filter = self.get_parameter('white_filter').value
         self.black_filter = self.get_parameter('black_filter').value
         self.white_list = self.get_parameter('white_list').value
         self.black_list = self.get_parameter('black_list').value
         self.substitute = self.get_parameter('substitute').value
 
-        msg = "Parameter 'substitute' must have even length: ['pattern1', 'replace1', ...]"
-        assert len(self.substitute) in [0, 1] or len(self.substitute) % 2 == 0, msg
+        # Compiled regex patterns
+        self.white_patterns = []
+        self.black_patterns = []
+        self.sub_patterns = []
 
-        if self.white_list:
-            self.white_filter = self.load_yaml(self.white_list)
-        if self.black_list:
-            self.black_filter = self.load_yaml(self.black_list)
+        # Initial compilation
+        self.compile_regexes()
 
         self.sub = self.create_subscription(
-            String, 'topic_in', self.chat_input_callback, 1000)
+            String, 'topic_in', self.input_callback, 10)
         self.pub = self.create_publisher(
-            String, 'topic_out', 1000)
+            String, 'topic_out', 10)
         self.pub_rejected = self.create_publisher(
-            String, 'topic_rejected', 1000)
+            String, 'topic_rejected', 10)
 
-        self.add_on_set_parameters_callback(
-            self.parameter_callback)
-
-    def transform(self, s):
-        """Substitute a string similar to python re.sub."""
-        if len(self.substitute) >= 2 and len(self.substitute) % 2 == 0:
-            for a, b in zip(self.substitute[::2], self.substitute[1::2]):
-                s = re.sub(a, b, s)
-        return s
-
-    def chat_input_callback(self, msg: String):
-        """
-        Handle incoming message callback.
-
-        It depends from black and white list if the message will be filtered.
-        Finally also substitutions are applied if configured.
-        """
-        is_white = False
-        for f in self.white_filter:
-            if f and re.search(f, msg.data):
-                is_white = True
-                break
-        if is_white is True \
-           or self.white_filter == [''] \
-           or len(self.white_filter) < 1:
-            for f in self.black_filter:
-                if f and re.search(f, msg.data):
-                    self.get_logger().debug('Skipping %s' % msg.data)
-                    self.pub_rejected.publish(msg)
-                    return
-            msg.data = self.transform(msg.data)
-            self.pub.publish(msg)
-            return
-        self.pub_rejected.publish(msg)
+        self.add_on_set_parameters_callback(self.on_parameter_change)
 
     def load_yaml(self, filename):
-        """Load YAML file and return content. Returns [] if an error occurs."""
+        """Load YAML file and return content list. Returns [] on error."""
+        if not filename or not os.path.isfile(filename):
+            return []
         try:
             with open(filename, 'r') as file:
-                content = yaml.load(file, Loader=yaml.FullLoader)
-                self.get_logger().info('Loaded items: %d' % len(content))
-            return content
+                content = yaml.safe_load(file)
+                if isinstance(content, list):
+                    return [str(item) for item in content if item]
         except Exception as e:
-            self.get_logger().error('Loading %s: %s' % (filename, str(e)))
-            return []
+            self.get_logger().error(f'Error loading {filename}: {e}')
+        return []
 
-    def parameter_callback(self, params):
-        """Parameter callback used by Dynamic Reconfigure."""
+    def compile_regexes(self):
+        """Pre-compile all regex patterns for performance."""
+        # 1. White List
+        raw_white = self.load_yaml(self.white_list) if self.white_list else self.white_filter
+        self.white_patterns = []
+        for p in raw_white:
+            if p:
+                try:
+                    self.white_patterns.append(re.compile(p))
+                except re.error as e:
+                    self.get_logger().error(f"Invalid white regex '{p}': {e}")
+
+        # 2. Black List
+        raw_black = self.load_yaml(self.black_list) if self.black_list else self.black_filter
+        self.black_patterns = []
+        for p in raw_black:
+            if p:
+                try:
+                    self.black_patterns.append(re.compile(p))
+                except re.error as e:
+                    self.get_logger().error(f"Invalid black regex '{p}': {e}")
+
+        # 3. Substitutions
+        self.sub_patterns = []
+        if self.substitute and len(self.substitute) >= 2:
+            if len(self.substitute) % 2 != 0:
+                self.get_logger().warn('Substitute parameter length must be even.')
+            else:
+                for i in range(0, len(self.substitute), 2):
+                    pattern, replacement = self.substitute[i], self.substitute[i+1]
+                    if pattern:
+                        try:
+                            self.sub_patterns.append((re.compile(pattern), replacement))
+                        except re.error as e:
+                            self.get_logger().error(f"Invalid sub regex '{pattern}': {e}")
+
+        self.get_logger().info(f'Compiled {len(self.white_patterns)} white, '
+                               f'{len(self.black_patterns)} black and '
+                               f'{len(self.sub_patterns)} sub patterns.')
+
+    def on_parameter_change(self, params):
+        """Handle dynamic parameter changes and trigger re-compilation."""
+        recompile_needed = False
         for param in params:
             if param.name == 'white_filter':
                 self.white_filter = param.value
+                recompile_needed = True
             elif param.name == 'black_filter':
                 self.black_filter = param.value
+                recompile_needed = True
+            elif param.name == 'white_list':
+                self.white_list = param.value
+                recompile_needed = True
+            elif param.name == 'black_list':
+                self.black_list = param.value
+                recompile_needed = True
             elif param.name == 'substitute':
-                if len(param.value) not in [0, 1] and len(param.value) % 2 != 0:
-                    self.get_logger().error("Parameter 'substitute' has invalid length")
+                if len(param.value) >= 2 and len(param.value) % 2 != 0:
                     return SetParametersResult(successful=False,
                                                reason='substitute length must be even')
                 self.substitute = param.value
-            elif param.name == 'black_list':
-                if self.black_list != param.value:
-                    self.get_logger().info('Reload %s' % param.value)
-                    self.black_filter = self.load_yaml(param.value)
-                self.black_list = param.value
-            elif param.name == 'white_list':
-                if self.white_list != param.value:
-                    self.get_logger().info('Reload %s' % param.value)
-                    self.white_filter = self.load_yaml(param.value)
-                self.white_list = param.value
+                recompile_needed = True
+
+        if recompile_needed:
+            self.compile_regexes()
+
         return SetParametersResult(successful=True)
+
+    def input_callback(self, msg: String):
+        """Process incoming messages through filters and substitutions."""
+        # White list check
+        if self.white_patterns:
+            if not any(p.search(msg.data) for p in self.white_patterns):
+                self.pub_rejected.publish(msg)
+                return
+
+        # Black list check
+        if self.black_patterns:
+            if any(p.search(msg.data) for p in self.black_patterns):
+                self.pub_rejected.publish(msg)
+                return
+
+        # Substitutions
+        for pattern, replacement in self.sub_patterns:
+            msg.data = pattern.sub(replacement, msg.data)
+
+        self.pub.publish(msg)
 
 
 def main():
     rclpy.init(args=None)
-    n = FilterNode()
-    rclpy.spin(n)
-    rclpy.shutdown()
+    node = FilterNode()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':

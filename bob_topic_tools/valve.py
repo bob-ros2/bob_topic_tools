@@ -15,11 +15,11 @@
 # limitations under the License.
 #
 
+from collections import deque
 import os
-import threading
-import time
 
 from rcl_interfaces.msg import ParameterDescriptor
+from rcl_interfaces.msg import SetParametersResult
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -31,9 +31,7 @@ class ValveNode(Node):
     def __init__(self):
         super().__init__('valve')
 
-        self.running = True
-        self.message_cache = []
-        self.cache_lock = threading.Lock()
+        self.message_cache = deque()
 
         self.declare_parameter('frequency',
                                float(os.getenv('VALVE_FREQUENCY', '1.0')),
@@ -42,37 +40,38 @@ class ValveNode(Node):
                                    'Can also be set via environment variable VALVE_FREQUENCY, '
                                    'default 1.0.')))
 
+        self.frequency = self.get_parameter('frequency').value
+        self.timer = self.create_timer(self.frequency, self.timer_callback)
+
         self.sub = self.create_subscription(
-            String, 'valve_in', self.input_callback, 1000)
+            String, 'valve_in', self.input_callback, 10)
         self.pub = self.create_publisher(
-            String, 'valve_out', 1000)
+            String, 'valve_out', 10)
 
-        # Start a separate thread to handle publishing
-        self.publish_thread = threading.Thread(
-            target=self.publish_messages)
-        self.publish_thread.daemon = True
-        self.publish_thread.start()
+        self.add_on_set_parameters_callback(self.on_parameter_change)
 
-    def publish_messages(self):
-        """Publish messages from the cache at a controlled frequency."""
-        while self.running:
-            msg = None
-            with self.cache_lock:
-                if self.message_cache:
-                    message = self.message_cache.pop(0)
-                    msg = String()
-                    msg.data = message
-                    self.pub.publish(msg)
-            if msg:
-                time.sleep(
-                    self.get_parameter('frequency').value)
-            else:
-                time.sleep(0.01)
+    def on_parameter_change(self, params):
+        """Handle dynamic parameter changes."""
+        for param in params:
+            if param.name == 'frequency':
+                self.frequency = param.value
+                self.get_logger().info(f'Frequency updated to: {self.frequency}s')
+                # Restart timer with new frequency
+                self.timer.cancel()
+                self.timer = self.create_timer(self.frequency, self.timer_callback)
+        return SetParametersResult(successful=True)
+
+    def timer_callback(self):
+        """Publish next message if available."""
+        if self.message_cache:
+            message = self.message_cache.popleft()
+            msg = String()
+            msg.data = message
+            self.pub.publish(msg)
 
     def input_callback(self, msg: String):
         """Handle incoming message callback."""
-        with self.cache_lock:
-            self.message_cache.append(msg.data)
+        self.message_cache.append(msg.data)
 
 
 def main():
