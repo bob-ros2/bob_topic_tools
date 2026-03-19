@@ -22,23 +22,22 @@ import sys
 
 import cv2
 from PyQt5 import QtCore, QtGui
-from PyQt5.Qsci import QsciLexerJSON
-from PyQt5.Qsci import QsciLexerMarkdown
-from PyQt5.Qsci import QsciLexerPython
-from PyQt5.Qsci import QsciScintilla
-from PyQt5.QtWidgets import QComboBox
-from PyQt5.QtWidgets import QGridLayout
-from PyQt5.QtWidgets import QLabel
-from PyQt5.QtWidgets import QMainWindow
-from PyQt5.QtWidgets import QScrollArea
-from PyQt5.QtWidgets import QSlider
-from PyQt5.QtWidgets import QSplitter
-from PyQt5.QtWidgets import QVBoxLayout
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtWidgets import QApplication
+from PyQt5.Qsci import QsciLexerJSON, QsciLexerMarkdown, QsciLexerPython, QsciScintilla
+from PyQt5.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QGridLayout,
+    QLabel,
+    QMainWindow,
+    QScrollArea,
+    QSlider,
+    QSplitter,
+    QVBoxLayout,
+    QWidget
+)
 
-import rclpy
 from rcl_interfaces.msg import ParameterDescriptor
+import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
@@ -471,7 +470,7 @@ class Window(QMainWindow):
 
     def input_callback_cr(self, msg: String):
         """Receive input text via ROS topic and update text with CR."""
-        self.update_text(msg.data+"\n")
+        self.update_text(msg.data + '\n')
 
     def input_callback_image(self, msg: Image):
         """Receive input image via ROS topic and update image view."""
@@ -487,7 +486,7 @@ class Window(QMainWindow):
                     'see ROS params.', once=True)
         except Exception as e:
             self.node.get_logger().info(
-                f"input_callback_image: failed to convert image: {e}")
+                f'input_callback_image: failed to convert image: {e}')
 
     def input_changed(self, text):
         """Input edit change text callback."""

@@ -18,8 +18,8 @@
 import logging
 import os
 
-import rclpy
 from rcl_interfaces.msg import ParameterDescriptor
+import rclpy
 from rclpy.logging import LoggingSeverity
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -47,7 +47,7 @@ class StringStreamBuffer:
 
     def remove_keywords(self, keywords):
         """Remove all occurrences of keywords from the buffer."""
-        keyword_set = set(keyword.encode('utf-8') for keyword in keywords)
+        keyword_set = {keyword.encode('utf-8') for keyword in keywords}
         new_buffer = bytearray()
         i = 0
 
@@ -165,13 +165,13 @@ class StreamFilterNode(Node):
         self.declare_parameter('start_tag',
                                os.getenv('STREAM_FILTER_START_TAG', '<think>'),
                                ParameterDescriptor(description=(
-                                   'Start tag of area to sort out, default \'<think>\'. '
+                                   "Start tag of area to sort out, default '<think>'. "
                                    'Can also be set via environment variable '
                                    'STREAM_FILTER_START_TAG.')))
         self.declare_parameter('end_tag',
                                os.getenv('STREAM_FILTER_END_TAG', '</think>'),
                                ParameterDescriptor(description=(
-                                   'End tag of area to filter out, default \'</think>\'. '
+                                   "End tag of area to filter out, default '</think>'. "
                                    'Can also be set via env STREAM_FILTER_END_TAG.')))
         self.declare_parameter('window_size',
                                int(os.getenv('STREAM_FILTER_WINDOW_SIZE', '32')),

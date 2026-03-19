@@ -18,12 +18,12 @@
 import os
 import re
 
-import rclpy
-import yaml
 from rcl_interfaces.msg import ParameterDescriptor
 from rcl_interfaces.msg import SetParametersResult
+import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
+import yaml
 
 
 class FilterNode(Node):
