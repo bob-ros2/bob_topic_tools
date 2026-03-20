@@ -1,0 +1,21 @@
+# ROS 2 build artifacts
+build/
+install/
+log/
+.pytest_cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+dist/
+*.egg-info/
+.env
+
+# ROS 2 specific
+cmake-build-debug/
+cmake-build-release/
+
+# IDEs
+.vscode/
+.idea/
