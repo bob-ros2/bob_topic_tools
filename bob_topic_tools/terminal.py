@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 import fcntl
 import os
 import select
@@ -35,8 +36,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget
 )
-
-from rcl_interfaces.msg import ParameterDescriptor
+from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
@@ -52,113 +52,128 @@ class RosNode(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-
                 ('title', os.getenv('TERMINAL_TITLE', 'Topic IO Terminal'),
-                 ParameterDescriptor(
-                     description=(
-                         'Title of window. '
-                         'Can also be set via environment variable TERMINAL_TITLE.'))),
+                 ParameterDescriptor(description=(
+                     'Title of window. '
+                     'Can also be set via environment variable TERMINAL_TITLE.'))),
 
                 ('lexer', os.getenv('TERMINAL_LEXER', 'QsciLexerMarkdown'),
-                 ParameterDescriptor(
-                     description=(
-                         'The lexer to be used. Possible: '
-                         'QsciLexerMarkdown, QsciLexerJSON, QsciLexerPython. '
-                         'Can also be set via environment variable TERMINAL_LEXER.'))),
+                 ParameterDescriptor(description=(
+                     'The lexer to be used. Possible: '
+                     'QsciLexerMarkdown, QsciLexerJSON, QsciLexerPython. '
+                     'Can also be set via environment variable TERMINAL_LEXER.'))),
 
                 ('image_view', os.getenv('TERMINAL_IMAGE_VIEW', 'false').lower() == 'true',
-                 ParameterDescriptor(
-                     description=(
-                         'Start with image view option. '
-                         'Can also be set via environment variable TERMINAL_IMAGE_VIEW.'))),
+                 ParameterDescriptor(description=(
+                     'Start with image view option. '
+                     'Can also be set via environment variable TERMINAL_IMAGE_VIEW.'))),
 
                 ('opacity', float(os.getenv('TERMINAL_OPACITY', '1.0')),
-                 ParameterDescriptor(
-                     description=(
-                         'Window opacity. '
-                         'Can also be set via environment variable TERMINAL_OPACITY.'))),
+                 ParameterDescriptor(description=(
+                     'Window opacity. '
+                     'Can also be set via environment variable TERMINAL_OPACITY.'))),
 
                 ('frameless', os.getenv('TERMINAL_FRAMELESS', 'false').lower() == 'true',
-                 ParameterDescriptor(
-                     description=(
-                         'Switch off window caption. '
-                         'Can also be set via environment variable TERMINAL_FRAMELESS.'))),
+                 ParameterDescriptor(description=(
+                     'Switch off window caption. '
+                     'Can also be set via environment variable TERMINAL_FRAMELESS.'))),
 
                 ('fontname', os.getenv('TERMINAL_FONTNAME', 'courier'),
-                 ParameterDescriptor(
-                     description=(
-                         'Window fontname. '
-                         'Can also be set via environment variable TERMINAL_FONTNAME.'))),
+                 ParameterDescriptor(description=(
+                     'Window fontname. '
+                     'Can also be set via environment variable TERMINAL_FONTNAME.'))),
 
                 ('fontsize', int(os.getenv('TERMINAL_FONTSIZE', '15')),
-                 ParameterDescriptor(
-                     description=(
-                         'Window fontsize. '
-                         'Can also be set via environment variable TERMINAL_FONTSIZE.'))),
+                 ParameterDescriptor(description=(
+                     'Window fontsize. '
+                     'Can also be set via environment variable TERMINAL_FONTSIZE.'))),
 
                 ('geometry', [int(x) for x in
                               os.getenv('TERMINAL_GEOMETRY', '0,0,1000,480').split(',')],
-                 ParameterDescriptor(
-                     description=(
-                         'Window geometry. [x, y, with, height]. '
-                         'Can also be set via environment variable TERMINAL_GEOMETRY.'))),
+                 ParameterDescriptor(description=(
+                     'Window geometry. [x, y, with, height]. '
+                     'Can also be set via environment variable TERMINAL_GEOMETRY.'))),
 
                 ('display', int(os.getenv('TERMINAL_DISPLAY', '0')),
-                 ParameterDescriptor(
-                     description=(
-                         'Display where to show window. '
-                         'Can also be set via environment variable TERMINAL_DISPLAY.'))),
+                 ParameterDescriptor(description=(
+                     'Display where to show window. '
+                     'Can also be set via environment variable TERMINAL_DISPLAY.'))),
 
                 ('margin', [int(x) for x in os.getenv('TERMINAL_MARGIN', '10,0,0,0').split(',')],
-                 ParameterDescriptor(
-                     description=(
-                         'Main window inner margin. [left, top, right, bottom]. '
-                         'Can also be set via environment variable TERMINAL_MARGIN.'))),
+                 ParameterDescriptor(description=(
+                     'Main window inner margin. [left, top, right, bottom]. '
+                     'Can also be set via environment variable TERMINAL_MARGIN.'))),
 
                 ('input', os.getenv('TERMINAL_INPUT', 'true').lower() == 'true',
-                 ParameterDescriptor(
-                     description=(
-                         'Enables or disables the text input field. '
-                         'Can also be set via environment variable TERMINAL_INPUT.'))),
+                 ParameterDescriptor(description=(
+                     'Enables or disables the text input field. '
+                     'Can also be set via environment variable TERMINAL_INPUT.'))),
 
                 ('stylesheet',
                  os.getenv('TERMINAL_STYLESHEET', 'background-color: black; color: #e9e9e9;'),
-                 ParameterDescriptor(
-                     description=(
-                         'Stylesheet qss of PlainText area. '
-                         'Can also be set via environment variable TERMINAL_STYLESHEET.'))),
+                 ParameterDescriptor(description=(
+                     'Stylesheet qss of PlainText area. '
+                     'Can also be set via environment variable TERMINAL_STYLESHEET.'))),
 
                 ('stylesheet_window',
                  os.getenv('TERMINAL_STYLESHEET_WINDOW', 'background-color: gray; color white;'),
-                 ParameterDescriptor(
-                     description=(
-                         'Stylesheet qss of Window area. '
-                         'Can also be set via env TERMINAL_STYLESHEET_WINDOW.'))),
+                 ParameterDescriptor(description=(
+                     'Stylesheet qss of Window area. '
+                     'Can also be set via env TERMINAL_STYLESHEET_WINDOW.'))),
 
                 ('line_count', int(os.getenv('TERMINAL_LINE_COUNT', '0')),
-                 ParameterDescriptor(
-                     description=(
-                         'Maximum line count in text area. 0 = unlimited. '
-                         'Can also be set via env TERMINAL_LINE_COUNT.'))),
+                 ParameterDescriptor(description=(
+                     'Maximum line count in text area. 0 = unlimited. '
+                     'Can also be set via env TERMINAL_LINE_COUNT.'))),
 
                 ('color_paper', os.getenv('TERMINAL_COLOR_PAPER', 'black'),
-                 ParameterDescriptor(
-                     description=(
-                         'Background color (name or HEX). '
-                         'Can also be set via environment variable TERMINAL_COLOR_PAPER.'))),
+                 ParameterDescriptor(description=(
+                     'Background color (name or HEX). '
+                     'Can also be set via environment variable TERMINAL_COLOR_PAPER.'))),
 
                 ('color_text', os.getenv('TERMINAL_COLOR_TEXT', 'lightgray'),
-                 ParameterDescriptor(
-                     description=(
-                         'Text color (name or HEX). '
-                         'Can also be set via environment variable TERMINAL_COLOR_TEXT.')))
+                 ParameterDescriptor(description=(
+                     'Text color (name or HEX). '
+                     'Can also be set via environment variable TERMINAL_COLOR_TEXT.')))
             ])
 
-        self.pub = self.create_publisher(
-            String, 'topic_out', 10)
+        # Current parameter states as attributes
+        self.title = self.get_parameter('title').value
+        self.lexer_name = self.get_parameter('lexer').value
+        self.image_view_enabled = self.get_parameter('image_view').value
+        self.opacity = self.get_parameter('opacity').value
+        self.frameless = self.get_parameter('frameless').value
+        self.fontname = self.get_parameter('fontname').value
+        self.fontsize = self.get_parameter('fontsize').value
+        self.geometry = self.get_parameter('geometry').value
+        self.display = self.get_parameter('display').value
+        self.margin = self.get_parameter('margin').value
+        self.input_enabled = self.get_parameter('input').value
+        self.stylesheet = self.get_parameter('stylesheet').value
+        self.stylesheet_window = self.get_parameter('stylesheet_window').value
+        self.line_count = self.get_parameter('line_count').value
+        self.color_paper = self.get_parameter('color_paper').value
+        self.color_text = self.get_parameter('color_text').value
+
+        self.pub = self.create_publisher(String, 'topic_out', 10)
         self.sub1 = None
         self.sub2 = None
         self.sub_image = None
+
+        self.add_on_set_parameters_callback(self.on_parameter_change)
+
+    def on_parameter_change(self, params):
+        """Handle parameter changes at runtime."""
+        for param in params:
+            if hasattr(self, param.name):
+                setattr(self, param.name, param.value)
+            # Special mapping for image_view and lexer to match attribute names
+            elif param.name == 'image_view':
+                self.image_view_enabled = param.value
+            elif param.name == 'lexer':
+                self.lexer_name = param.value
+
+        return SetParametersResult(successful=True)
 
     def publish(self, s):
         """Publish String message on topic."""
@@ -166,12 +181,9 @@ class RosNode(Node):
 
     def create_input_subscriptions(self, callback, callback_cr, callback_image):
         """Create topic subscriptions."""
-        self.sub1 = self.create_subscription(
-            String, 'topic_in', callback, 1000)
-        self.sub2 = self.create_subscription(
-            String, 'topic_in_cr', callback_cr, 1000)
-        self.sub_image = self.create_subscription(
-            Image, 'image', callback_image, 1000)
+        self.sub1 = self.create_subscription(String, 'topic_in', callback, 1000)
+        self.sub2 = self.create_subscription(String, 'topic_in_cr', callback_cr, 1000)
+        self.sub_image = self.create_subscription(Image, 'image', callback_image, 1000)
 
 
 class StdinThread(QtCore.QThread):
@@ -209,62 +221,49 @@ class Window(QMainWindow):
     """Main Window with terminal."""
 
     def __init__(self, node: RosNode):
-        QWidget.__init__(self)
+        super().__init__()
         self.node = node
         self.worker = StdinThread()
         self.worker.result.connect(self.update_text)
         self.oldPosition = QtCore.QPoint(0, 0)
 
         # setup main window
-        self.setWindowTitle(
-            self.node.get_parameter('title').value)
+        self.setWindowTitle(self.node.title)
+        self.setStyleSheet(self.node.stylesheet_window)
+        self.setWindowOpacity(self.node.opacity)
 
-        self.setStyleSheet(
-            self.node.get_parameter('stylesheet_window').value)
+        if self.node.frameless:
+            self.setWindowFlag(QtCore.Qt.FramelessWindowHint)
 
-        self.setWindowOpacity(
-            self.node.get_parameter('opacity').value)
-
-        if self.node.get_parameter('frameless').value:
-            self.node.setWindowFlag(
-                QtCore.Qt.FramelessWindowHint)
-
-        geometry = self.node.get_parameter('geometry').value
-        if len(geometry) > 3:
-            self.setGeometry(
-                geometry[0], geometry[1], geometry[2], geometry[3])
+        if len(self.node.geometry) > 3:
+            self.setGeometry(self.node.geometry[0], self.node.geometry[1],
+                             self.node.geometry[2], self.node.geometry[3])
 
         # create font
-        font = QtGui.QFont(
-            self.node.get_parameter('fontname').value)
-        font.setPointSize(
-            self.node.get_parameter('fontsize').value)
+        font = QtGui.QFont(self.node.fontname)
+        font.setPointSize(self.node.fontsize)
 
         # create text area
         self.tarea = QsciScintilla()
         self.tarea.setFont(font)
 
         # Set lexer
-        lexer_name = self.node.get_parameter('lexer').value
-        if lexer_name == 'QsciLexerMarkdown':
+        if self.node.lexer_name == 'QsciLexerMarkdown':
             self.lexer = QsciLexerMarkdown()
-        elif lexer_name == 'QsciLexerJSON':
+        elif self.node.lexer_name == 'QsciLexerJSON':
             self.lexer = QsciLexerJSON()
-        elif lexer_name == 'QsciLexerPython':
+        elif self.node.lexer_name == 'QsciLexerPython':
             self.lexer = QsciLexerPython()
         else:
             self.node.get_logger().warn(
-                f'Unknown lexer: {lexer_name} Using default: QsciLexerMarkdown')
+                f'Unknown lexer: {self.node.lexer_name} Using default: QsciLexerMarkdown')
             self.lexer = QsciLexerMarkdown()
-
-        self.color_paper = self.node.get_parameter('color_paper').value
-        self.color_text = self.node.get_parameter('color_text').value
 
         self.set_tarea_colors()
         self.set_lexer_styles()
         self.tarea.setLexer(self.lexer)
 
-        # Optionally, set some other settings for QScintilla
+        # QScintilla settings
         self.tarea.SendScintilla(QsciScintilla.SCI_SETHSCROLLBAR, 0)
         self.tarea.SendScintilla(QsciScintilla.SCI_SETVSCROLLBAR, 0)
         self.tarea.setMarginLineNumbers(0, False)
@@ -273,65 +272,55 @@ class Window(QMainWindow):
         self.tarea.setIndentationWidth(4)
         self.tarea.setAutoIndent(True)
 
-        # set max line count
-        if self.node.get_parameter('line_count').value > 0:
-            self.tarea.setMax.setMaximumBlockCount(
-                self.node.get_parameter('line_count').value)
+        if self.node.line_count > 0:
+            self.tarea.setMax.setMaximumBlockCount(self.node.line_count)
 
-        # create input text field with history functionality from QComboBox
+        # input field history functionality
         self.text = ''
         self.tedit = QComboBox()
         self.tedit.setEditable(True)
-        self.tedit.setStyleSheet(
-            self.node.get_parameter('stylesheet').value)
+        self.tedit.setStyleSheet(self.node.stylesheet)
         self.tedit.editTextChanged.connect(self.input_changed)
         self.tedit.lineEdit().setMaxLength(512000)
-        self.tedit.lineEdit().setStyleSheet(
-            self.node.get_parameter('stylesheet').value)
+        self.tedit.lineEdit().setStyleSheet(self.node.stylesheet)
         self.tedit.lineEdit().returnPressed.connect(self.input_enter)
 
-        # put together layout
+        # layout
         layout = QGridLayout()
-        margin = self.node.get_parameter('margin').value
-        if len(margin) > 3:
-            layout.setContentsMargins(
-                margin[0], margin[1], margin[2], margin[3])
+        if len(self.node.margin) > 3:
+            layout.setContentsMargins(self.node.margin[0], self.node.margin[1],
+                                      self.node.margin[2], self.node.margin[3])
         layout.setSpacing(0)
 
         layout.addWidget(self.tarea)
-        if self.node.get_parameter('input').value:
+        if self.node.input_enabled:
             layout.addWidget(self.tedit)
             self.tedit.setFocus()
         else:
             self.tarea.setFocus()
 
-        # Create a splitter to divide the main window into two parts
         self.splitter = QSplitter(QtCore.Qt.Horizontal)
-
-        # Add the editor and image viewer to the splitter
         leftWidget = QWidget()
         leftWidget.setLayout(layout)
-
         self.splitter.addWidget(leftWidget)
 
-        if self.node.get_parameter('image_view').value:
+        if self.node.image_view_enabled:
             from cv_bridge import CvBridge
             self.bridge = CvBridge()
             self.cv_image = None
             self.original_cv_image = None
-            self.splitter.addWidget(
-                self.create_image_widget())
+            self.splitter.addWidget(self.create_image_widget())
         else:
             self.bridge = None
 
-        # Set the splitter as the central widget
         self.setCentralWidget(self.splitter)
 
-        if self.node.get_parameter('display').value >= 0:
-            screen = QtGui.QGuiApplication.screens()[
-                self.node.get_parameter('display').value]
-            self.move(screen.geometry().x()+geometry[0],
-                      screen.geometry().y()+geometry[1])
+        if self.node.display >= 0:
+            screens = QtGui.QGuiApplication.screens()
+            if self.node.display < len(screens):
+                screen = screens[self.node.display]
+                self.move(screen.geometry().x() + self.node.geometry[0],
+                          screen.geometry().y() + self.node.geometry[1])
 
         self.node.create_input_subscriptions(
             self.input_callback,
@@ -344,21 +333,18 @@ class Window(QMainWindow):
 
     def create_image_widget(self):
         """Create image widget with slider."""
-        # Create a QScrollArea and QLabel for the image viewer
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.image_label = QLabel()
         self.image_label.setAlignment(QtCore.Qt.AlignCenter)
         self.scroll_area.setWidget(self.image_label)
 
-        # Create a slider to resize the image
         self.slider = QSlider(QtCore.Qt.Horizontal)
         self.slider.setMinimum(1)
         self.slider.setMaximum(1000)
         self.slider.setValue(100)
         self.slider.valueChanged.connect(self.resize_image)
 
-        # Create a layout for the image viewer with the slider
         self.image_widget = QWidget()
         self.image_layout = QVBoxLayout()
         self.image_layout.addWidget(self.scroll_area)
@@ -372,20 +358,17 @@ class Window(QMainWindow):
         rclpy.spin_once(self.node, timeout_sec=0.01)
 
     def start_read_stdin(self):
-        """Start the worker to read the incomming stdin stream."""
+        """Start the worker to read the incoming stdin stream."""
         self.worker.start()
 
     def set_lexer_styles(self):
         """Set all styles background."""
-        self.lexer.setDefaultPaper(QtGui.QColor(self.color_paper))
-        self.lexer.setDefaultColor(QtGui.QColor(self.color_text))
+        self.lexer.setDefaultPaper(QtGui.QColor(self.node.color_paper))
+        self.lexer.setDefaultColor(QtGui.QColor(self.node.color_text))
         for style in range(0, 22):
-            self.lexer.setPaper(QtGui.QColor(self.color_paper), style)
+            self.lexer.setPaper(QtGui.QColor(self.node.color_paper), style)
 
-    def update_settings(self,
-                        prefix: str = 'lexer.markdown',
-                        read: bool = False,
-                        write: bool = True):
+    def update_settings(self, prefix='lexer.markdown', read=False, write=True):
         """Update settings with given options."""
         self.settings = QtCore.QSettings('BobRos', 'Terminal')
         if read:
@@ -394,9 +377,9 @@ class Window(QMainWindow):
             self.lexer.writeSettings(self.settings, prefix)
 
     def set_tarea_colors(self):
-        """Set ext area colors."""
-        self.tarea.setCaretForegroundColor(QtGui.QColor(self.color_text))
-        self.tarea.setMarginsBackgroundColor(QtGui.QColor(self.color_paper))
+        """Set area colors."""
+        self.tarea.setCaretForegroundColor(QtGui.QColor(self.node.color_text))
+        self.tarea.setMarginsBackgroundColor(QtGui.QColor(self.node.color_paper))
         self.tarea.setWrapMode(QsciScintilla.SC_WRAP_WORD)
         self.tarea.setIndentationGuides(True)
         self.tarea.setIndentationsUseTabs(False)
@@ -404,7 +387,6 @@ class Window(QMainWindow):
 
     def update_text(self, s: str):
         """Append given text in the PlainText area."""
-        # handle not closing code block issue from QsciLexerMarkdown
         if s.strip(' ').startswith('```'):
             s = s.strip(' ')
         self.tarea.append(s)
@@ -424,7 +406,6 @@ class Window(QMainWindow):
     def resize_image(self, value):
         """Resize image based on slider value."""
         if self.original_cv_image is not None:
-
             height, width = self.original_cv_image.shape[:2]
             new_width = int(width * (value / 100))
             new_height = int(height * (value / 100))
@@ -435,58 +416,45 @@ class Window(QMainWindow):
                 interpolation=cv2.INTER_AREA)
             h, w = scaled_image.shape[:2]
 
-            # Convert to RGB format for Qt display based on encoding
             encoding = getattr(self, 'image_encoding', 'bgr8')
             if encoding in ['mono8', 'mono16', '8UC1', '16UC1', '32FC1']:
-                # Grayscale - convert to RGB
-                if len(scaled_image.shape) == 2:
-                    display_image = cv2.cvtColor(scaled_image, cv2.COLOR_GRAY2RGB)
-                else:
-                    display_image = scaled_image
+                display_image = cv2.cvtColor(scaled_image, cv2.COLOR_GRAY2RGB) \
+                    if len(scaled_image.shape) == 2 else scaled_image
             elif encoding in ['rgb8', 'rgb16', '8UC3'] and 'rgb' in encoding.lower():
-                # Already RGB
                 display_image = scaled_image
             elif encoding in ['rgba8', 'rgba16', '8UC4']:
-                # RGBA - convert to RGB
                 display_image = cv2.cvtColor(scaled_image, cv2.COLOR_RGBA2RGB)
             elif encoding in ['bgra8', 'bgra16']:
-                # BGRA - convert to RGB
                 display_image = cv2.cvtColor(scaled_image, cv2.COLOR_BGRA2RGB)
             else:
-                # Default: assume BGR (most common in OpenCV/ROS) - convert to RGB
                 display_image = cv2.cvtColor(scaled_image, cv2.COLOR_BGR2RGB)
 
             bytes_per_line = 3 * w
             q_img = QtGui.QImage(
                 display_image.data, w, h, bytes_per_line,
                 QtGui.QImage.Format_RGB888)
-
             pixmap = QtGui.QPixmap.fromImage(q_img)
             self.image_label.setPixmap(pixmap)
 
     def input_callback(self, msg: String):
-        """Receive input text via ROS topic and update text."""
+        """Receive input text via ROS topic."""
         self.update_text(msg.data)
 
     def input_callback_cr(self, msg: String):
-        """Receive input text via ROS topic and update text with CR."""
+        """Receive input text via ROS topic with CR."""
         self.update_text(msg.data + '\n')
 
     def input_callback_image(self, msg: Image):
-        """Receive input image via ROS topic and update image view."""
+        """Receive input image via ROS topic."""
         try:
             if self.bridge:
                 self.image_encoding = msg.encoding
-                self.cv_image = self.bridge.imgmsg_to_cv2(
-                    msg, desired_encoding='passthrough')
+                self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
                 self.update_image()
             else:
-                self.node.get_logger().warning(
-                    'input_callback_image: image view not enabled, '
-                    'see ROS params.', once=True)
+                self.node.get_logger().warning('image view not enabled', once=True)
         except Exception as e:
-            self.node.get_logger().info(
-                f'input_callback_image: failed to convert image: {e}')
+            self.node.get_logger().info(f'failed to convert image: {e}')
 
     def input_changed(self, text):
         """Input edit change text callback."""
@@ -500,16 +468,16 @@ class Window(QMainWindow):
         self.text = ''
 
     def closeEvent(self, event):
-        """Window close callback. This stops also the stdin worker thread."""
+        """Stop stdin worker thread on close."""
         self.worker.stop()
         event.accept()
 
     def mousePressEvent(self, event):
-        """Mouse press callback. Handles also window moving without caption."""
+        """Handle window moving without caption."""
         self.oldPosition = event.globalPos()
 
     def mouseMoveEvent(self, event):
-        """Mouse move callback. Handles also window moving without caption."""
+        """Handle window moving without caption."""
         delta = QtCore.QPoint(event.globalPos() - self.oldPosition)
         self.move(self.x() + delta.x(), self.y() + delta.y())
         self.oldPosition = event.globalPos()

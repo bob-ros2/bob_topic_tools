@@ -17,7 +17,10 @@ String topic filter ROS node. It supports also dynamic parameter reconfigure dur
 | `black_filter` | string array | String array with blacklist rules. Can also be set via environment variable `FILTER_BLACK_FILTER`. |
 | `white_list` | string | White list file. This overrides parameter `white_filter`. Format: Yaml file with a list of strings containing regex rules. Can also be set via environment variable `FILTER_WHITE_LIST`. |
 | `black_list` | string | Black list file. This overrides parameter `black_filter`. Format: Yaml file with a list of strings containing regex rules. Can also be set via environment variable `FILTER_BLACK_LIST`. |
-| `substitute` | string array | Applies substitutions to the string message similar to python `re.sub`. Expects an array with pairs: `['pattern1','replace1', 'pattern2','replace2', ...]`. Can also be set via environment variable `FILTER_SUBSTITUTE`. |
+| `substitute` | string array | Substitutions using regex. Expects pairs: `['pattern', 'replace', ...]`. Can also be set via environment variable `FILTER_SUBSTITUTE`. |
+| `trim_data` | boolean | If `true`, trims whitespace (or `trim_chars`) from the message. Default `false`. Can also be set via environment variable `FILTER_TRIM_DATA`. |
+| `trim_chars` | string | Characters to trim if `trim_data` is true. Defaults to standard whitespace if empty. Can also be set via environment variable `FILTER_TRIM_CHARS`. |
+| `skip_empty` | boolean | If `true`, skips messages that are empty after processing. Default `false`. Can also be set via environment variable `FILTER_SKIP_EMPTY`. |
 
 ### Topics
 
@@ -54,7 +57,7 @@ String Stream aggregator node.
 
 | Name | Type | Description |
 |---|---|---|
-| `delimiters` | string | Delimiter character list where to stop aggregating the input and publish. These strings are transformed into their real equivalents: `\n` and `\t`. Default `.:,;!?\n`. Can also be set via environment variable `AGGREGATOR_DELIMITERS`. |
+| `delimiters` | string | Delimiter character list where to stop aggregating the input and publish. These strings are transformed into their real equivalents: `\n` and `\t`. Default `.,!?\n`. Can also be set via environment variable `AGGREGATOR_DELIMITERS`. |
 | `auto_flush` | integer | Auto-flush timer in milliseconds. If the last token is not a delimiter, the aggregated text is published after this timeout. Set to 0 to disable. Default 1500ms. Can also be set via environment variable `AGGREGATOR_AUTO_FLUSH`. |
 
 ### Topics

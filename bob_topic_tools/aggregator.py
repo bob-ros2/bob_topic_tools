@@ -33,13 +33,13 @@ class AggregatorNode(Node):
         self.last_text_time = self.get_clock().now()
 
         self.declare_parameter('delimiters',
-                               os.getenv('AGGREGATOR_DELIMITERS', '.:,;!?\n'),
+                               os.getenv('AGGREGATOR_DELIMITERS', '.,!?\n'),
                                ParameterDescriptor(description=(
                                    'Delimiter characters to stop aggregating the input and '
                                    'publish the aggregated data to the ouput topic. '
                                    'Real equivalents like \\n and \\t are supported. '
                                    'Can also be set via environment variable '
-                                   "AGGREGATOR_DELIMITERS, default '.:,;!?\\n'")))
+                                   "AGGREGATOR_DELIMITERS, default '.,!?\\n'")))
 
         self.declare_parameter('auto_flush',
                                int(os.getenv('AGGREGATOR_AUTO_FLUSH', '1500')),

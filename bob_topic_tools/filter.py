@@ -23,6 +23,7 @@ from rcl_interfaces.msg import SetParametersResult
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
+import string
 import yaml
 
 
@@ -68,7 +69,26 @@ class FilterNode(Node):
                  if os.getenv('FILTER_SUBSTITUTE') else [''],
                  ParameterDescriptor(description=(
                      'Applies substitutions. Array with pairs: [pattern1, replace1, ...]. '
-                     'Can also be set via environment variable FILTER_SUBSTITUTE.')))
+                     'Can also be set via environment variable FILTER_SUBSTITUTE.'))),
+
+                ('trim_data',
+                 os.getenv('FILTER_TRIM_DATA', 'false').lower() == 'true',
+                 ParameterDescriptor(description=(
+                     'If true, trims whitespace (or trim_chars) from the message. '
+                     'Can also be set via environment variable FILTER_TRIM_DATA.'))),
+
+                ('trim_chars',
+                 os.getenv('FILTER_TRIM_CHARS', ''),
+                 ParameterDescriptor(description=(
+                     'Specific characters to trim if trim_data is true. '
+                     'Defaults to standard whitespace if empty. '
+                     'Can also be set via environment variable FILTER_TRIM_CHARS.'))),
+
+                ('skip_empty',
+                 os.getenv('FILTER_SKIP_EMPTY', 'false').lower() == 'true',
+                 ParameterDescriptor(description=(
+                     'If true, skips messages that are empty after processing. '
+                     'Can also be set via environment variable FILTER_SKIP_EMPTY.')))
             ])
 
         # Current parameter states
@@ -77,6 +97,9 @@ class FilterNode(Node):
         self.white_list = self.get_parameter('white_list').value
         self.black_list = self.get_parameter('black_list').value
         self.substitute = self.get_parameter('substitute').value
+        self.trim_data = self.get_parameter('trim_data').value
+        self.trim_chars = self.get_parameter('trim_chars').value
+        self.skip_empty = self.get_parameter('skip_empty').value
 
         # Compiled regex patterns
         self.white_patterns = []
@@ -92,6 +115,8 @@ class FilterNode(Node):
             String, 'topic_out', 10)
         self.pub_rejected = self.create_publisher(
             String, 'topic_rejected', 10)
+
+        self.get_logger().debug('FilterNode initialized.')
 
         self.add_on_set_parameters_callback(self.on_parameter_change)
 
@@ -144,10 +169,6 @@ class FilterNode(Node):
                         except re.error as e:
                             self.get_logger().error(f"Invalid sub regex '{pattern}': {e}")
 
-        self.get_logger().info(f'Compiled {len(self.white_patterns)} white, '
-                               f'{len(self.black_patterns)} black and '
-                               f'{len(self.sub_patterns)} sub patterns.')
-
     def on_parameter_change(self, params):
         """Handle dynamic parameter changes and trigger re-compilation."""
         recompile_needed = False
@@ -170,6 +191,12 @@ class FilterNode(Node):
                                                reason='substitute length must be even')
                 self.substitute = param.value
                 recompile_needed = True
+            elif param.name == 'trim_data':
+                self.trim_data = bool(param.value)
+            elif param.name == 'trim_chars':
+                self.trim_chars = str(param.value)
+            elif param.name == 'skip_empty':
+                self.skip_empty = bool(param.value)
 
         if recompile_needed:
             self.compile_regexes()
@@ -178,21 +205,36 @@ class FilterNode(Node):
 
     def input_callback(self, msg: String):
         """Process incoming messages through filters and substitutions."""
-        # White list check
+        original_data = msg.data
+
+        # 1. White list check
         if self.white_patterns:
             if not any(p.search(msg.data) for p in self.white_patterns):
                 self.pub_rejected.publish(msg)
                 return
 
-        # Black list check
+        # 2. Black list check
         if self.black_patterns:
             if any(p.search(msg.data) for p in self.black_patterns):
                 self.pub_rejected.publish(msg)
                 return
 
-        # Substitutions
+        # 3. Substitutions
         for pattern, replacement in self.sub_patterns:
             msg.data = pattern.sub(replacement, msg.data)
+
+        # 4. Trimming
+        if self.trim_data:
+            if self.trim_chars:
+                msg.data = msg.data.strip(string.whitespace + self.trim_chars)
+            else:
+                msg.data = msg.data.strip()
+
+        # 5. Skip empty
+        if self.skip_empty and not msg.data:
+            self.get_logger().debug(f'MSG SKIP: "{repr(original_data)}"')
+            self.pub_rejected.publish(msg)
+            return
 
         self.pub.publish(msg)
 
