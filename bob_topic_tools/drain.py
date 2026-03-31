@@ -16,7 +16,6 @@
 #
 
 from collections import deque
-import os
 
 from rcl_interfaces.msg import ParameterDescriptor
 from rcl_interfaces.msg import SetParametersResult
@@ -25,28 +24,24 @@ from rclpy.node import Node
 from std_msgs.msg import String
 
 
-class ValveNode(Node):
-    """String topic forwarding node with valve behavior."""
+class DrainNode(Node):
+    """String topic forwarding node with drain behavior."""
 
     def __init__(self):
-        super().__init__('valve')
+        super().__init__('drain')
 
         self.message_cache = deque()
 
-        self.declare_parameter('frequency',
-                               float(os.getenv('VALVE_FREQUENCY', '1.0')),
-                               ParameterDescriptor(description=(
-                                   'Frequency in seconds to forward incoming messages to output. '
-                                   'Can also be set via environment variable VALVE_FREQUENCY, '
-                                   'default 1.0.')))
+        self.declare_parameter('frequency', 1.0,
+                               ParameterDescriptor(description='Frequency in seconds.'))
 
         self.frequency = self.get_parameter('frequency').value
         self.timer = self.create_timer(self.frequency, self.timer_callback)
 
         self.sub = self.create_subscription(
-            String, 'valve_in', self.input_callback, 10)
+            String, 'drain_in', self.input_callback, 10)
         self.pub = self.create_publisher(
-            String, 'valve_out', 10)
+            String, 'drain_out', 10)
 
         self.add_on_set_parameters_callback(self.on_parameter_change)
 
@@ -76,7 +71,7 @@ class ValveNode(Node):
 
 def main():
     rclpy.init(args=None)
-    n = ValveNode()
+    n = DrainNode()
     rclpy.spin(n)
     rclpy.shutdown()
 

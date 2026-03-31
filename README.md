@@ -57,8 +57,8 @@ String Stream aggregator node.
 
 | Name | Type | Description |
 |---|---|---|
-| `delimiters` | string | Delimiter character list where to stop aggregating the input and publish. These strings are transformed into their real equivalents: `\n` and `\t`. Default `.,!?\n`. Can also be set via environment variable `AGGREGATOR_DELIMITERS`. |
-| `auto_flush` | integer | Auto-flush timer in milliseconds. If the last token is not a delimiter, the aggregated text is published after this timeout. Set to 0 to disable. Default 1500ms. Can also be set via environment variable `AGGREGATOR_AUTO_FLUSH`. |
+| `delimiters` | string array | List of delimiter strings where to stop aggregating. Supports multi-character delimiters like `. `. Default: `['.', ',', '!', '?', '\n']`. |
+| `auto_flush` | integer | Auto-flush timer in milliseconds. Default 1500ms. |
 
 ### Topics
 
@@ -117,18 +117,18 @@ netcat -U /tmp/some.sock | ros2 run bob_topic_tools terminal --ros-args -p displ
 | `~topic_out` | `std_msgs/String` | Publish text entered in terminal. |
 | `~image` | `sensor_msgs/Image` | Optional image subscription. |
 
-## ROS Node Valve
-String topic forwarding node with valve behavior. Controls the flow of messages to the output topic at a specified frequency.
+## ROS Node Drain
+String topic forwarding node with drain behavior. Controls the flow of messages to the output topic at a specified frequency.
 
 ### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| `frequency` | double | Frequency in seconds to forward incoming messages to output topic. Default `1.0`. Can also be set via environment variable `VALVE_FREQUENCY`. |
+| `frequency` | double | Frequency in seconds to forward incoming messages to output topic. Default `1.0`. |
 
 ### Topics
 
 | Name | Type | Description |
 |---|---|---|
-| `~valve_in` | `std_msgs/String` | Input stream topic. |
-| `~valve_out` | `std_msgs/String` | Buffered output stream topic. |
+| `~drain_in` | `std_msgs/String` | Input stream topic. |
+| `~drain_out` | `std_msgs/String` | Buffered output stream topic. |

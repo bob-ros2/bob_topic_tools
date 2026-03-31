@@ -15,7 +15,6 @@
 # limitations under the License.
 #
 
-import os
 
 from rcl_interfaces.msg import ParameterDescriptor
 import rclpy
@@ -33,21 +32,11 @@ class AggregatorNode(Node):
         self.last_text_time = self.get_clock().now()
 
         self.declare_parameter('delimiters',
-                               os.getenv('AGGREGATOR_DELIMITERS', '.,!?\n'),
-                               ParameterDescriptor(description=(
-                                   'Delimiter characters to stop aggregating the input and '
-                                   'publish the aggregated data to the ouput topic. '
-                                   'Real equivalents like \\n and \\t are supported. '
-                                   'Can also be set via environment variable '
-                                   "AGGREGATOR_DELIMITERS, default '.,!?\\n'")))
+                               ['.', ',', '!', '?', '\n'],
+                               ParameterDescriptor(description='List of delimiter strings.'))
 
-        self.declare_parameter('auto_flush',
-                               int(os.getenv('AGGREGATOR_AUTO_FLUSH', '1500')),
-                               ParameterDescriptor(description=(
-                                   'Auto-flush timer in milliseconds. If the last token is not '
-                                   'a delimiter, the text is published after this timeout. '
-                                   'Set to 0 to disable. Default 1500ms. '
-                                   'Can also be set via env AGGREGATOR_AUTO_FLUSH.')))
+        self.declare_parameter('auto_flush', 1500,
+                               ParameterDescriptor(description='Auto-flush (ms, 0 to disable).'))
 
         self.sub = self.create_subscription(
             String, 'stream_in', self.input_callback, 1000)
@@ -56,9 +45,9 @@ class AggregatorNode(Node):
 
         self.flush_timer = self.create_timer(0.1, self.flush_callback)
 
-    def handle_escape(self, s: str):
-        """Handle escape characters for specific delimiters."""
-        return s.replace('\\n', '\n').replace('\\t', '\t')
+    def handle_escape(self, values: list):
+        """Handle escape characters for delimiters in a list."""
+        return [v.replace('\\n', '\n').replace('\\t', '\t').replace('\\s', ' ') for v in values]
 
     def input_callback(self, msg: String):
         """Handle incoming message callback."""
@@ -70,9 +59,10 @@ class AggregatorNode(Node):
 
         for c in msg.data:
             self.sentence += c
-            if c in delims:
+            # Check if any delimiter matches the current end of sentence
+            if any(self.sentence.endswith(d) for d in delims):
                 self.get_logger().debug(
-                    f"input_callback: char:{c} delims:'{delims}'")
+                    f"input_callback: triggered by delimiter match in: '{self.sentence}'")
                 self.pub.publish(String(data=self.sentence))
                 self.sentence = ''
 

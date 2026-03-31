@@ -6,7 +6,9 @@ Changelog for package bob_topic_tools
 ------------------
 * `FilterNode`: Enhanced with `trim_data`, `trim_chars`, and `skip_empty` for robust message cleaning.
 * `TerminalNode`: Modernized parameter management with runtime update support.
-* Refactored `Valve` and `StreamFilter` nodes to use native timers and optimized data structures.
+* `AggregatorNode`: Added support for multi-character delimiters (e.g., `. `) and transitioned `delimiters` to a string array.
+* `DrainNode`: Renamed from `ValveNode` to better reflect its "draining" behavior. Standardized topics to `drain_in` and `drain_out`.
+* Refactored nodes to prioritize native ROS 2 parameters and removed redundant environment variable overrides.
 * Full PEP 8 and PEP 257 compliance across all Python files.
 * Enabled automatic linting via `ament_lint_auto`.
 
