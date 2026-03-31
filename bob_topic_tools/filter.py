@@ -17,13 +17,13 @@
 
 import os
 import re
+import string
 
 from rcl_interfaces.msg import ParameterDescriptor
 from rcl_interfaces.msg import SetParametersResult
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
-import string
 import yaml
 
 
