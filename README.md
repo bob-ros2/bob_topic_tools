@@ -67,6 +67,22 @@ String Stream aggregator node.
 | `~stream_in` | `std_msgs/String` | Read input string stream from topic. |
 | `~stream_out` | `std_msgs/String` | Publish aggregated output. |
 
+## ROS Node Drain
+String topic forwarding node with drain behavior. Controls the flow of messages to the output topic at a specified frequency.
+
+### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| `frequency` | double | Frequency in seconds to forward incoming messages to output topic. Default `1.0`. |
+
+### Topics
+
+| Name | Type | Description |
+|---|---|---|
+| `~drain_in` | `std_msgs/String` | Input stream topic. |
+| `~drain_out` | `std_msgs/String` | Buffered output stream topic. |
+
 ## ROS Node Terminal
 Basic String topic IO terminal ROS Node with syntax highlighting.
 
@@ -116,19 +132,3 @@ netcat -U /tmp/some.sock | ros2 run bob_topic_tools terminal --ros-args -p displ
 | `~topic_in_cr` | `std_msgs/String` | Read input data and append newline. |
 | `~topic_out` | `std_msgs/String` | Publish text entered in terminal. |
 | `~image` | `sensor_msgs/Image` | Optional image subscription. |
-
-## ROS Node Drain
-String topic forwarding node with drain behavior. Controls the flow of messages to the output topic at a specified frequency.
-
-### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| `frequency` | double | Frequency in seconds to forward incoming messages to output topic. Default `1.0`. |
-
-### Topics
-
-| Name | Type | Description |
-|---|---|---|
-| `~drain_in` | `std_msgs/String` | Input stream topic. |
-| `~drain_out` | `std_msgs/String` | Buffered output stream topic. |
